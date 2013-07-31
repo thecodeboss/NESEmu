@@ -1,13 +1,14 @@
 #include "CPU.h"
 
-u8 CPU::Read(u16 Address)
+uint8 CPU::Read(uint16 Address)
 {
 	Tick();
 	if (Address < 0x2000) return RAM[Address&0x7FF];
+	else if (Address < 0x4000) return ppu->Read(Address&7);
 	else return 0; // TODO
 }
 
-u8 CPU::Write(u16 Address, u8 Value)
+uint8 CPU::Write(uint16 Address, uint8 Value)
 {
 	Tick();
 	if (Address < 0x2000) RAM[Address&0x7FF] = Value;
@@ -15,31 +16,31 @@ u8 CPU::Write(u16 Address, u8 Value)
 	return 0;
 }
 
-u16 CPU::WrapAddress(u16 Old, u16 New)
+uint16 CPU::WrapAddress(uint16 Old, uint16 New)
 {
-	return (Old & 0xFF00) + u8(New);
+	return (Old & 0xFF00) + uint8(New);
 }
 
-void CPU::Misfire(u16 Old, u16 New)
+void CPU::Misfire(uint16 Old, uint16 New)
 {
-	u16 temp = WrapAddress(Old, New);
+	uint16 temp = WrapAddress(Old, New);
 	if (temp != New) Read(New);
 }
 
-u8 CPU::Pop()
+uint8 CPU::Pop()
 {
-	return Read(0x100 | u8(++SP));
+	return Read(0x100 | uint8(++SP));
 }
 
-void CPU::Push(u8 value)
+void CPU::Push(uint8 value)
 {
-	Write(0x100 | u8(SP--), value);
+	Write(0x100 | uint8(SP--), value);
 }
 
 void CPU::Tick()
 {
 	// PPU clock speed is 3x the CPU clock speed
-	for (u32 i=0; i<3; ++i) ppu->Tick();
+	for (uint32 i=0; i<3; ++i) ppu->Tick();
 
 	// APU clock speed is the same as the CPU clock speed
 	apu->Tick();
@@ -58,6 +59,19 @@ CPU::CPU() : A(0), X(0), Y(0), SP(0), PC(0xC000), Cycles(0), Reset(false), NMI(f
 #undef o
 #undef c
 
+void CPU::Init()
+{
+	for (uint32 i=0; i<0x800; i++) RAM[i] = (i&4) ? 0xFF : 0x00;
+}
+
+void CPU::Run()
+{
+	while (1)
+	{
+		Op();
+	}
+}
+
 void CPU::SetAPU( APU* in )
 {
 	apu = in;
@@ -71,7 +85,7 @@ void CPU::SetPPU( PPU* in )
 bool CPU::Op()
 {
 	// Read the next instruction
-	u16 op = Read(PC++);
+	uint16 op = Read(PC++);
 
 	if (Reset) op = 0x101; // Force reset
 	else if (NMI && !NMIEdgeDetected)

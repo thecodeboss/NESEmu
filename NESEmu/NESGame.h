@@ -6,14 +6,14 @@
 
 class NESGame
 {
-	u8 mappernum;
-	std::vector<u8> ROM, VRAM;
+	uint8 mappernum;
+	std::vector<uint8> ROM, VRAM;
 
 public:
 	NESGame();
-	void SetMapperNum(u8 in);
-	void SetROMSize( u8 numROM16 );
-	void SetVRAMSize( u8 numROM16 );
+	void SetMapperNum(uint8 in);
+	void SetROMSize( uint8 numROM16 );
+	void SetVRAMSize( uint8 numROM16 );
 	void LoadROM(std::ifstream& InputGame);
 	void LoadVRAM(std::ifstream& InputGame);
 };

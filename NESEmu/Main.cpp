@@ -17,7 +17,7 @@ int main(int argc, char** argv)
 
 	ifstream InputGame(argv[1]);
 
-	u8 temp, numROM16, numVROM8, ctrlByte1, ctrlByte2;
+	uint8 temp, numROM16, numVROM8, ctrlByte1, ctrlByte2;
 	for(int i=0;i<4;i++) InputGame >> temp; // Read 'NES^Z' from header
 
 	InputGame >> numROM16 >> numVROM8 >> ctrlByte1 >> ctrlByte2;
@@ -26,8 +26,12 @@ int main(int argc, char** argv)
 
 	game->SetMapperNum(ctrlByte2 | (ctrlByte1 >> 4));
 	game->SetROMSize(numROM16);
+	game->SetVRAMSize(numVROM8);
 	game->LoadROM(InputGame);
 	game->LoadVRAM(InputGame);
+
+	cpu->Init();
+	cpu->Run();
 
 	return 0;
 }

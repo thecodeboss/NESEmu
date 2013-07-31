@@ -5,7 +5,7 @@
 
 class APU
 {
-	u32 Cycles;
+	uint64 Cycles;
 public:
 	APU();
 	void Tick();

@@ -6,12 +6,17 @@
 #include <SDL.h>
 #undef main
 
-typedef unsigned char u8;
-typedef signed char s8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+typedef unsigned char uint8;
+typedef unsigned short uint16;
+typedef unsigned int uint32;
+typedef unsigned long long uint64;
 
-template<u32 bitnum, u32 numbits=1, typename T=u8>
+typedef signed char int8;
+typedef signed short int16;
+typedef signed int int32;
+typedef signed long long int64;
+
+template<uint32 bitnum, uint32 numbits=1, typename T=uint8>
 struct Bit {
 	T data;
 	enum {
