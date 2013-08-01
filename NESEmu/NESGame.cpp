@@ -3,7 +3,10 @@ using namespace std;
 
 NESGame::NESGame() : mappernum(0)
 {
-
+	NameTable[0] = NRAM + 0x0000;
+	NameTable[1] = NRAM + 0x0400;
+	NameTable[2] = NRAM + 0x0000;
+	NameTable[3] = NRAM + 0x0400;
 }
 
 void NESGame::SetMapperNum( uint8 in )

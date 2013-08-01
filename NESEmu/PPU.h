@@ -2,13 +2,17 @@
 #define PPU_h__
 
 #include "Global.h"
+#include "NESGame.h"
 
 class PPU
 {
 	uint64 Cycles;
-	int32 OpenBus;
+	int32 OpenBus, OpenBusDecayTimer, VBlankState, ReadBuffer;
+	uint8 OAM[256], palette[32];
+	bool OffsetToggle;
+	NESGame* game;
 
-	union PPUReg
+	union Register
 	{
 		uint32 raw;
 
@@ -43,11 +47,30 @@ class PPU
 		Bit<24,8,uint32> OAMADDR; // Somewhat obscure
 		Bit<24,2,uint32> OAMData;
 		Bit<26,6,uint32> OAMIndex;
-	} Registers;
+	} PPUREG;
+
+	union ScrollType
+	{
+		Bit<3,16,uint32> raw;
+		Bit<0,8,uint32> XScroll;
+		Bit<0,3,uint32> XFine;
+		Bit<3,5,uint32> XCoarse;
+		Bit<8,5,uint32> YCoarse;
+		Bit<13,2,uint32> NameTableAddress;
+		Bit<13,1,uint32> HorizNameTableIndex;
+		Bit<14,1,uint32> VertNameTableIndex;
+		Bit<15,3,uint32> YFine;
+		Bit<11,8,uint32> VAddrHi;
+		Bit<3,8,uint32> VAddrLo;
+	} PPUSCROLL, PPUADDR;
 public:
 	PPU();
 	void Tick();
 	uint8 Read( uint16 Address );
+	uint8 Write( uint16 Address, uint8 Value);
+	uint8 MemoryMap( uint32 raw );
+	uint8 RefreshOpenBus( uint8 RetValue );
+	void SetGame( NESGame* g );
 };
 
 #endif // PPU_h__
