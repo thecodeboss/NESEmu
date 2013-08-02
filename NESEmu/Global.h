@@ -1,8 +1,11 @@
 #ifndef Global_h__
 #define Global_h__
 
+#define _USE_MATH_DEFINES
+
 #include <iostream>
 #include <fstream>
+#include <cmath>
 #include <SDL.h>
 #undef main
 

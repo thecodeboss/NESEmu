@@ -14,6 +14,7 @@ int main(int argc, char** argv)
 	io->Init();
 	cpu->SetAPU(apu);
 	cpu->SetPPU(ppu);
+	ppu->SetIO(io);
 	ppu->SetGame(game);
 
 	ifstream InputGame(argv[1]);

@@ -12,8 +12,8 @@ uint8 CPU::Write(uint16 Address, uint8 Value)
 {
 	Tick();
 	if (Address < 0x2000) RAM[Address&0x7FF] = Value;
-	// else = TODO
-	return 0;
+	else if (Address < 0x4000) return ppu->Write(Address&7, Value);
+	else return 0;
 }
 
 uint16 CPU::WrapAddress(uint16 Old, uint16 New)

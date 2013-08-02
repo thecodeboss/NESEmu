@@ -130,3 +130,8 @@ void PPU::SetGame( NESGame* g )
 	game = g;
 }
 
+void PPU::SetIO( IO* i )
+{
+	io = i;
+}
+

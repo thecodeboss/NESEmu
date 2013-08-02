@@ -2,6 +2,7 @@
 #define PPU_h__
 
 #include "Global.h"
+#include "IO.h"
 #include "NESGame.h"
 
 class PPU
@@ -10,6 +11,7 @@ class PPU
 	int32 OpenBus, OpenBusDecayTimer, VBlankState, ReadBuffer;
 	uint8 OAM[256], palette[32];
 	bool OffsetToggle;
+	IO* io;
 	NESGame* game;
 
 	union Register
@@ -71,6 +73,7 @@ public:
 	uint8 MemoryMap( uint32 raw );
 	uint8 RefreshOpenBus( uint8 RetValue );
 	void SetGame( NESGame* g );
+	void SetIO( IO* i );
 };
 
 #endif // PPU_h__
