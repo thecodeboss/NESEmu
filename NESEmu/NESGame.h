@@ -30,6 +30,7 @@ public:
 	void SetVROM( uint32 Size, uint32 BaseAddress, uint32 Index );
 	void SetROM( uint32 Size, uint32 BaseAddress, uint32 Index );
 	void Init();
+	void Dump();
 };
 
 #endif // NESGame_h__

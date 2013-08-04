@@ -8,6 +8,7 @@
 #include <cmath>
 #include <string>
 #include <cstdlib>
+#include <bitset>
 #include <stdint.h>
 #include <SDL.h>
 #undef main

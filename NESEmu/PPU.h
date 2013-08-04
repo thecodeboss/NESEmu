@@ -13,7 +13,7 @@ class PPU
 	uint16 TileAttribute, TilePattern, IOAddress;
 	uint32 BGShiftPattern, BGShiftAttribute;
 	uint32 PatternAddress, SpriteInPosition, SpriteOutPosition, SpriteRenderPosition, SpriteTemp;
-	uint8 OAM[256], Palette[32], Banks[2][0x1000];
+	uint8 OAM[256], Palette[32];
 	bool OffsetToggle, NMI, EvenOddToggle;
 	IO* io;
 	NESGame* game;
@@ -75,8 +75,10 @@ class PPU
 	{
 		uint8 SpriteIndex, x, y, Index, Attribute;
 		uint16 Pattern;
+		OAMType() : SpriteIndex(0), x(0), y(0), Index(0), Attribute(0), Pattern(0) {}
 	} OAM2[8], OAM3[8];
 	bool NMIWasSet;
+	bool NMIWasRead;
 public:
 	PPU();
 	void Tick();
@@ -90,6 +92,7 @@ public:
 	void RenderTick();
 	void RenderPixel();
 	void Init();
+	void Dump();
 };
 
 #endif // PPU_h__

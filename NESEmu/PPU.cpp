@@ -12,10 +12,10 @@ PPU::PPU() : Cycles(0)
 	, OffsetToggle(false)
 	, NMI(false)
 	, NMIWasSet(false)
+	, NMIWasRead(false)
 	, EvenOddToggle(false)
 {
-	PPUSCROLL.data = 0;
-	PPUADDR.data = 0;
+
 }
 
 void PPU::Tick()
@@ -31,6 +31,7 @@ void PPU::Tick()
 	case 0:
 		NMI = PPUREG.VBlankStarted && PPUREG.NMIEnabled;
 		if (NMI) NMIWasSet = true;
+		else if (!NMIWasRead) NMIWasSet = false;
 		break;
 	case 2:
 		PPUREG.VBlankStarted = true;
@@ -209,6 +210,7 @@ bool PPU::GetNMI()
 	if (NMIWasSet)
 	{
 		NMIWasSet = false;
+		NMIWasRead = true;
 		return true;
 	}
 	return false;
@@ -216,7 +218,7 @@ bool PPU::GetNMI()
 
 void PPU::RenderTick()
 {
-	bool TileDecodeMode = 0x10FFFF & (1u << (x/16));
+	bool TileDecodeMode = (0x10FFFF & (1u << (x/16))) != 0;
 
 	uint32 p;
 	switch(x % 8)
@@ -274,7 +276,7 @@ void PPU::RenderTick()
 		else if (SpriteRenderPosition < SpriteOutPosition)
 		{
 			// Copy sprite from OAM2 to OAM3
-			OAMType& o = OAM3[SpriteRenderPosition];
+			auto& o = OAM3[SpriteRenderPosition];
 			memcpy(&o, &OAM2[SpriteRenderPosition], sizeof(o));
 			uint32 y = Scanline - o.y;
 			if (o.Attribute & 0x80) y ^= (PPUREG.SpriteSize ? 15 : 7);
@@ -364,7 +366,7 @@ void PPU::RenderPixel()
 	{
 		for (uint32 SpriteNumber=0; SpriteNumber < SpriteRenderPosition; ++SpriteNumber)
 		{
-			OAMType& sprite = OAM3[SpriteNumber];
+			auto& sprite = OAM3[SpriteNumber];
 
 			// Check if the sprite is in range horizontally
 			uint32 XDiff = x - sprite.x;
@@ -397,6 +399,36 @@ void PPU::RenderPixel()
 void PPU::Init()
 {
 	PPUREG.raw = 0;
+	PPUSCROLL.data = 0;
+	PPUADDR.data = 0;
+
+	for(int32 i=0; i<256; i++) OAM[i]=0;
 	for (int32 i=0; i<32; i++) Palette[i] = 0;
+}
+
+void PPU::Dump()
+{
+	std::cout << "PPU Data" << std::endl;
+	std::cout << "x = " << std::hex << x << "; Scanline = " << Scanline << "; PatternAddress = " << PatternAddress << "; SprRPos = " << SpriteRenderPosition << std::endl;
+	std::cout << "Registers: " << std::bitset<32>(PPUREG.raw) << std::endl;
+	std::cout << "OAM:" << std::endl;
+	for (int i=0; i<256; i++)
+	{
+		PrintHex(OAM[i]);
+		if (i%40 == 0 && i>0) std::cout << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << "OAM2 and OAM3:" << std::endl;
+	for (int32 i=0; i<8; i++)
+	{
+		std::cout << (int)OAM2[i].SpriteIndex << "\t" << (int)OAM3[i].SpriteIndex << std::endl;
+		std::cout << (int)OAM2[i].x << "\t" << (int)OAM3[i].x << std::endl;
+		std::cout << (int)OAM2[i].y << "\t" << (int)OAM3[i].y << std::endl;
+		std::cout << (int)OAM2[i].Index << "\t" << (int)OAM3[i].Index << std::endl;
+		std::cout << (int)OAM2[i].Attribute << "\t" << (int)OAM3[i].Attribute << std::endl;
+		std::cout << OAM2[i].Pattern << "\t" << OAM3[i].Pattern << std::endl;
+		std::cout << std::endl;
+	}
+	std::cout << std::endl;
 }
 

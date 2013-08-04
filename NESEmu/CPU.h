@@ -1,7 +1,6 @@
 #ifndef CPU_h__
 #define CPU_h__
 
-#include <bitset>
 #include "Global.h"
 #include "IO.h"
 #include "APU.h"
@@ -56,7 +55,8 @@ private:
 	uint8 Pop();
 	void Push(uint8 value);
 
-public:	
+public:
+	friend class APU;
 	CPU();
 	void Init();
 	void Run();
@@ -145,6 +145,8 @@ public:
 	}
 	void SetIO( IO* i );
 	void SetGame( NESGame* g );
+	void Dump();
+	bool SetInterrupt( bool b );
 };
 
 #endif // CPU_h__

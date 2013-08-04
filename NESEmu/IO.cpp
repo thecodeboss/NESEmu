@@ -1,17 +1,18 @@
 #include "IO.h"
+#include "Palette.h"
 #include <sstream>
 using namespace std;
 
-IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false)
+IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false)
 {
 
 }
 
-bool IO::Init()
+bool IO::Init(int32 hScale, int32 vScale)
 {
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_InitSubSystem(SDL_INIT_VIDEO);
-	screen = SDL_SetVideoMode(256, 240, 32, 0);
+	screen = SDL_SetVideoMode(hScale*256, vScale*240, 32, 0);
 	SDL_WM_SetCaption("The Code Boss's NES Emulator", NULL );
 
 	if (screen == NULL)
@@ -20,7 +21,10 @@ bool IO::Init()
 		return false;
 	}
 
-	InitPalette();
+	HorizontalScale = hScale;
+	VerticalScale = vScale;
+
+	InitPalettes();
 
 	return true;
 }
@@ -50,8 +54,18 @@ void IO::FlushScanline( uint32 y )
 
 void IO::SetPixel( uint32 x, uint32 y, uint32 pixel, int32 offset )
 {
-	((uint32*) screen->pixels) [y * 256 + x] = Palette[offset][PreviousPixel%64][pixel];
-	PreviousPixel = pixel;
+	int32 yv = y*VerticalScale, xh = x*HorizontalScale, z = 256*HorizontalScale;
+	if (NTSCMode)
+	{
+		for (int32 i=0; i<VerticalScale; ++i) for (int32 j=0; j<HorizontalScale; ++j)
+			((uint32*) screen->pixels) [(yv+i) * z + xh + j] = NTSCPalette[offset][PreviousPixel%64][pixel];
+		PreviousPixel = pixel;
+	}
+	else
+	{
+		for (int32 i=0; i<VerticalScale; ++i) for (int32 j=0; j<HorizontalScale; ++j)
+			((uint32*) screen->pixels) [(yv+i) * z + xh + j] = Palette[pixel & 0x3F];
+	}
 }
 
 float IO::GammaFix( float f )
@@ -64,10 +78,18 @@ uint32 IO::Clamp( float i )
 	return i > 255 ? 255 : static_cast<uint32>(i);
 }
 
-void IO::InitPalette()
+void IO::InitPalettes()
 {
 	for (int32 i=0; i<3; i++) for (int32 j=0; j<64; j++) for (int32 k=0; k<512; k++)
-		Palette[i][j][k] = 0;
+		NTSCPalette[i][j][k] = 0;
+
+	// Set the 64 colours of the palette, increasing their intensity
+	for (int32 i=0; i<64; i++)
+	{
+		Palette[i] = Palettes::default[i];
+		uint32 pr = (Palette[i] & 0xFF0000) >> 16, pg = (Palette[i] & 0x00FF00) >> 8, pb = Palette[i] & 0x0000FF;
+		Palette[i] = 0x10000*Clamp(pr*4.f) + 0x00100*Clamp(pg*4.f) + 0x00001*Clamp(pb*4.f);
+	}
 
 	// Note: the following snippet is largely taken from Bisqwit
 	for(int32 o=0; o<3; ++o)
@@ -93,9 +115,9 @@ void IO::InitPalette()
 					}
 					// Store color at subpixel precision
 					float Y = y/1980.f, I = i/9e6f, Q = q/9e6f; // Convert from int to float
-					if(u==2) Palette[o][p1][p0] += 0x10000*Clamp(255 * GammaFix(Y + I* 0.947f + Q* 0.624f));
-					if(u==1) Palette[o][p1][p0] += 0x00100*Clamp(255 * GammaFix(Y + I*-0.275f + Q*-0.636f));
-					if(u==0) Palette[o][p1][p0] += 0x00001*Clamp(255 * GammaFix(Y + I*-1.109f + Q* 1.709f));
+					if(u==2) NTSCPalette[o][p1][p0] += 0x10000*Clamp(255 * GammaFix(Y + I* 0.947f + Q* 0.624f));
+					if(u==1) NTSCPalette[o][p1][p0] += 0x00100*Clamp(255 * GammaFix(Y + I*-0.275f + Q*-0.636f));
+					if(u==0) NTSCPalette[o][p1][p0] += 0x00001*Clamp(255 * GammaFix(Y + I*-1.109f + Q* 1.709f));
 				}
 
 	SetPixel(0,0,0,0);
@@ -115,4 +137,9 @@ bool IO::Poll()
 void IO::SetFrameDump( bool set )
 {
 	FrameDump = true;
+}
+
+void IO::SetNTSCMode( bool b )
+{
+	NTSCMode = b;
 }

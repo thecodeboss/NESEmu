@@ -5,7 +5,21 @@ uint8 CPU::Read(uint16 Address)
 	Tick();
 	if (Address < 0x2000) return RAM[Address&0x7FF];
 	else if (Address < 0x4000) return ppu->Read(Address&7);
-	else if (Address < 0x4018) return 0; // TODO
+	else if (Address < 0x4018)
+	{
+		switch (Address & 0x1F)
+		{
+		case 0x14:
+			return 0;
+		case 0x15:
+			return apu->Read();
+		case 0x16: case 0x17:
+			return 0; // Joystick Read ----- TODO
+		default:
+			return 0;
+			break;
+		}
+	}
 	else return game->Read(Address);
 }
 
@@ -15,7 +29,24 @@ uint8 CPU::Write(uint16 Address, uint8 Value)
 	Tick();
 	if (Address < 0x2000) RAM[Address&0x7FF] = Value;
 	else if (Address < 0x4000) return ppu->Write(Address&7, Value);
-	else if (Address < 0x4018) return 0; // TODO
+	else if (Address < 0x4018)
+	{
+		switch (Address & 0x1F)
+		{
+		case 0x14:
+			for(uint32 b=0; b<256; ++b) Write(0x2004, Read((Value&7)*0x0100+b));
+			break;
+		case 0x15:
+			apu->Write(0x15, Value);
+			break;
+		case 0x16:
+			break; // Joystick Write ----- TODO
+		case 0x17:
+		default:
+			apu->Write(Address&0x1F, Value);
+			break;
+		}
+	}
 	else return game->Write(Address, Value);
 
 	return 0;
@@ -72,7 +103,7 @@ void CPU::Init()
 
 void CPU::Run()
 {
-	while (io->Poll())
+	while (io->Poll() /*&& Cycles < 2000000*/)
 	{
 		Op();
 	}
@@ -138,4 +169,24 @@ void CPU::SetIO( IO* i )
 void CPU::SetGame( NESGame* g )
 {
 	game = g;
+}
+
+void CPU::Dump()
+{
+	std::cout << "CPU Data" << std::endl;
+	std::cout << "A = " << std::hex << (int)A << "; X = " << (int)X << "; Y = " << (int)Y << "; PC = " << PC << std::endl;
+	std::cout << "Flags: " << std::bitset<8>(P.raw) << std::endl;
+	std::cout << "RAM:" << std::endl;
+	for (int i=0; i<0x800; i++)
+	{
+		PrintHex(RAM[i]);
+		if (i%40 == 0 && i>0) std::cout << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
+}
+
+bool CPU::SetInterrupt( bool b )
+{
+	return Interrupt = b;
 }

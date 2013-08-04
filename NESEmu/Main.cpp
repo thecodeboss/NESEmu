@@ -12,7 +12,7 @@ char ToHex(uint8 in)
 
 void PrintHex(uint8 in)
 {
-	cout << ToHex(in >> 4) << ToHex(in & 0x0F) << " " << endl;
+	cout << ToHex(in >> 4) << ToHex(in & 0x0F) << " ";
 	//cout << (int)in << " ";
 }
 
@@ -30,7 +30,8 @@ int main(int argc, char** argv)
 	NESGame* game = new NESGame();
 	CPU* cpu = new CPU();
 
-	io->Init();
+	io->Init(2, 2);
+	io->SetNTSCMode(false);
 
 	if (argc > 2 && !strcmp(argv[2],"framedump")) io->SetFrameDump(true);
 
@@ -43,6 +44,8 @@ int main(int argc, char** argv)
 	ppu->SetIO(io);
 	ppu->SetGame(game);
 	ppu->Init();
+
+	apu->SetCPU(cpu);
 
 	ifstream InputGame(argv[1], ios::binary);
 	InputGame.unsetf(ios_base::skipws);
@@ -67,6 +70,11 @@ int main(int argc, char** argv)
 	game->Init();
 
 	cpu->Run();
+
+	cpu->Dump();
+	ppu->Dump();
+	apu->Dump();
+	game->Dump();
 
 	return 0;
 }

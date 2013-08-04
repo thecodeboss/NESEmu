@@ -7,6 +7,8 @@ NESGame::NESGame() : MapperNum(0), VRAM(0x2000)
 	NameTable[1] = NRAM + 0x0400;
 	NameTable[2] = NRAM + 0x0000;
 	NameTable[3] = NRAM + 0x0400;
+	for (int32 i=0; i<0x1000; i++) NRAM[i] = 0;
+	for (int32 i=0; i<0x2000; i++) PRAM[i] = 0;
 }
 
 void NESGame::SetMapperNum( uint8 in )
@@ -101,7 +103,7 @@ uint8 NESGame::Write( uint32 Address, uint8 Value )
 
 void NESGame::SetVROM( uint32 Size, uint32 BaseAddress, uint32 Index )
 {
-	for(uint32 v = VRAM.size() + Index * Size, p = BaseAddress / VROMGranularity;
+	for(uint32 v = static_cast<uint32>(VRAM.size()) + Index * Size, p = BaseAddress / VROMGranularity;
 		(p < (BaseAddress + Size) / VROMGranularity) && (p < VROMPages);
 		++p, v += VROMGranularity)
 			VBanks[p] = &VRAM[v % VRAM.size()];
@@ -109,7 +111,7 @@ void NESGame::SetVROM( uint32 Size, uint32 BaseAddress, uint32 Index )
 
 void NESGame::SetROM( uint32 Size, uint32 BaseAddress, uint32 Index )
 {
-	for(uint32 v = ROM.size() + Index * Size, p = BaseAddress / ROMGranularity;
+	for(uint32 v = static_cast<uint32>(ROM.size()) + Index * Size, p = BaseAddress / ROMGranularity;
 		(p < (BaseAddress + Size) / ROMGranularity) && (p < ROMPages);
 		++p, v += ROMGranularity)
 			Banks[p] = &ROM[v % ROM.size()];
@@ -121,4 +123,37 @@ void NESGame::Init()
 	for (uint32 i=0; i<VROMPages; i++) VBanks[i] = NULL;
 	SetVROM(0x2000, 0x0000, 0);
 	for(uint32 v=0; v<4; ++v) SetROM(0x4000, v*0x4000, v==3 ? -1 : 0);
+}
+
+void NESGame::Dump()
+{
+	std::cout << "Game Data" << std::endl;
+	std::cout << "NRAM:" << std::endl;
+	for (int i=0; i<0x1000; i++)
+	{
+		PrintHex(NRAM[i]);
+		if (i%40 == 0 && i>0) std::cout << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << "PRAM:" << std::endl;
+	for (int i=0; i<0x2000; i++)
+	{
+		PrintHex(PRAM[i]);
+		if (i%40 == 0 && i>0) std::cout << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << "ROM:" << std::endl;
+	for (int i=0; i<ROM.size(); i++)
+	{
+		PrintHex(ROM[i]);
+		if (i%40 == 0 && i>0) std::cout << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << "VRAM:" << std::endl;
+	for (int i=0; i<VRAM.size(); i++)
+	{
+		PrintHex(VRAM[i]);
+		if (i%40 == 0 && i>0) std::cout << std::endl;
+	}
+	std::cout << std::endl;
 }
