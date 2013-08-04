@@ -30,9 +30,6 @@
     <ClCompile Include="NESGame.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Joel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="IO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

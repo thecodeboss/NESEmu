@@ -9,8 +9,12 @@ class PPU
 {
 	uint64 Cycles;
 	int32 OpenBus, OpenBusDecayTimer, VBlankState, ReadBuffer;
-	uint8 OAM[256], palette[32];
-	bool OffsetToggle;
+	int32 x, Scanline, CycleCounter, ScanlineEnd;
+	uint16 TileAttribute, TilePattern, IOAddress;
+	uint32 BGShiftPattern, BGShiftAttribute;
+	uint32 PatternAddress, SpriteInPosition, SpriteOutPosition, SpriteRenderPosition, SpriteTemp;
+	uint8 OAM[256], Palette[32], Banks[2][0x1000];
+	bool OffsetToggle, NMI, EvenOddToggle;
 	IO* io;
 	NESGame* game;
 
@@ -40,7 +44,7 @@ class PPU
 		Bit<15,1,uint32> IntensifyBlues; // 1: Intensify
 
 		// Register 2 (read)
-		Bit<8,8,uint32> PPUSTATUS; // This register reflects the state of various functions inside the PPU
+		Bit<16,8,uint32> PPUSTATUS; // This register reflects the state of various functions inside the PPU
 		Bit<21,1,uint32> SpriteOverflow; // It's complicated
 		Bit<22,1,uint32> Sprite0Hit; // Set when a nonzero pixel of sprite 0 overlaps a nonzero background pixel
 		Bit<23,1,uint32> VBlankStarted; // (0: not in VBLANK; 1: in VBLANK)
@@ -53,6 +57,7 @@ class PPU
 
 	union ScrollType
 	{
+		uint32 data;
 		Bit<3,16,uint32> raw;
 		Bit<0,8,uint32> XScroll;
 		Bit<0,3,uint32> XFine;
@@ -65,15 +70,26 @@ class PPU
 		Bit<11,8,uint32> VAddrHi;
 		Bit<3,8,uint32> VAddrLo;
 	} PPUSCROLL, PPUADDR;
+
+	struct OAMType
+	{
+		uint8 SpriteIndex, x, y, Index, Attribute;
+		uint16 Pattern;
+	} OAM2[8], OAM3[8];
+	bool NMIWasSet;
 public:
 	PPU();
 	void Tick();
 	uint8 Read( uint16 Address );
 	uint8 Write( uint16 Address, uint8 Value);
-	uint8 MemoryMap( uint32 raw );
+	uint8& MemoryMap( int32 raw );
 	uint8 RefreshOpenBus( uint8 RetValue );
 	void SetGame( NESGame* g );
 	void SetIO( IO* i );
+	bool GetNMI();
+	void RenderTick();
+	void RenderPixel();
+	void Init();
 };
 
 #endif // PPU_h__

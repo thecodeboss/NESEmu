@@ -1,7 +1,26 @@
+#include "Global.h"
 #include "CPU.h"
 #include "NESGame.h"
 #include "IO.h"
 using namespace std;
+
+char ToHex(uint8 in)
+{
+	if (in < 10) return in + '0';
+	else return (in-10) + 'A';
+}
+
+void PrintHex(uint8 in)
+{
+	cout << ToHex(in >> 4) << ToHex(in & 0x0F) << " " << endl;
+	//cout << (int)in << " ";
+}
+
+void ReadHex(ifstream& input, uint8& output) 
+{
+	input >> output;
+	//PrintHex(output);
+}
 
 int main(int argc, char** argv)
 {
@@ -12,19 +31,32 @@ int main(int argc, char** argv)
 	CPU* cpu = new CPU();
 
 	io->Init();
+
+	if (argc > 2 && !strcmp(argv[2],"framedump")) io->SetFrameDump(true);
+
+	cpu->SetIO(io);
 	cpu->SetAPU(apu);
 	cpu->SetPPU(ppu);
+	cpu->SetGame(game);
+	cpu->Init();
+
 	ppu->SetIO(io);
 	ppu->SetGame(game);
+	ppu->Init();
 
-	ifstream InputGame(argv[1]);
+	ifstream InputGame(argv[1], ios::binary);
+	InputGame.unsetf(ios_base::skipws);
 
 	uint8 temp, numROM16, numVROM8, ctrlByte1, ctrlByte2;
-	for(int i=0;i<4;i++) InputGame >> temp; // Read 'NES^Z' from header
+	for(int i=0;i<4;i++) ReadHex(InputGame, temp); // Read 'NES^Z' from header
 
-	InputGame >> numROM16 >> numVROM8 >> ctrlByte1 >> ctrlByte2;
+	//InputGame >> numROM16 >> numVROM8 >> ctrlByte1 >> ctrlByte2;
+	ReadHex(InputGame, numROM16);
+	ReadHex(InputGame, numVROM8);
+	ReadHex(InputGame, ctrlByte1);
+	ReadHex(InputGame, ctrlByte2);
 
-	for(int i=0;i<7;i++) InputGame >> temp; // Read 7 junk bytes
+	for(int i=0;i<8;i++) ReadHex(InputGame, temp); // Read 8 junk bytes
 
 	game->SetMapperNum(ctrlByte2 | (ctrlByte1 >> 4));
 	game->SetROMSize(numROM16);
@@ -32,7 +64,8 @@ int main(int argc, char** argv)
 	game->LoadROM(InputGame);
 	game->LoadVRAM(InputGame);
 
-	cpu->Init();
+	game->Init();
+
 	cpu->Run();
 
 	return 0;

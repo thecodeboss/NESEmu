@@ -1,24 +1,73 @@
 #include "IO.h"
+#include <sstream>
 using namespace std;
 
-IO::IO() : PreviousPixel(~0u)
+IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false)
 {
 
 }
 
 bool IO::Init()
 {
-	if ( SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) < 0 ) {
-		cout << "Failed to init SDL" << endl;
-		return false;
-	}
+	SDL_Init(SDL_INIT_VIDEO);
+	SDL_InitSubSystem(SDL_INIT_VIDEO);
+	screen = SDL_SetVideoMode(256, 240, 32, 0);
+	SDL_WM_SetCaption("The Code Boss's NES Emulator", NULL );
 
-	screen = SDL_SetVideoMode(256, 250, 16, SDL_SWSURFACE);
 	if (screen == NULL)
 	{
 		cout << "Failed to set SDL video mode" << endl;
 		return false;
 	}
+
+	InitPalette();
+
+	return true;
+}
+
+void IO::FlushScanline( uint32 y )
+{
+	if (y == 239)
+	{
+		SDL_Flip(screen);
+		ScanlineFlushed = true;
+		if (FrameDump)
+		{
+			std::stringstream s;
+			s << "..\\frames\\frame";
+			if (FrameCount < 10) s << "000";
+			else if (FrameCount < 100) s << "00";
+			else if (FrameCount < 1000) s << "0";
+			s << FrameCount << ".bmp";
+			std::string Filename;
+			s >> Filename;
+			std::cout << Filename << std::endl;
+			SDL_SaveBMP( screen, Filename.c_str());
+			FrameCount++;
+		}
+	}
+}
+
+void IO::SetPixel( uint32 x, uint32 y, uint32 pixel, int32 offset )
+{
+	((uint32*) screen->pixels) [y * 256 + x] = Palette[offset][PreviousPixel%64][pixel];
+	PreviousPixel = pixel;
+}
+
+float IO::GammaFix( float f )
+{
+	return f <= 0.f ? 0.f : std::pow(f, 2.2f / 1.8f);
+}
+
+uint32 IO::Clamp( float i )
+{
+	return i > 255 ? 255 : static_cast<uint32>(i);
+}
+
+void IO::InitPalette()
+{
+	for (int32 i=0; i<3; i++) for (int32 j=0; j<64; j++) for (int32 k=0; k<512; k++)
+		Palette[i][j][k] = 0;
 
 	// Note: the following snippet is largely taken from Bisqwit
 	for(int32 o=0; o<3; ++o)
@@ -49,29 +98,21 @@ bool IO::Init()
 					if(u==0) Palette[o][p1][p0] += 0x00001*Clamp(255 * GammaFix(Y + I*-1.109f + Q* 1.709f));
 				}
 
+	SetPixel(0,0,0,0);
+}
+
+bool IO::Poll()
+{
+	if (ScanlineFlushed)
+	{
+		SDL_PollEvent( &event );
+		if( event.type == SDL_QUIT ) return false;
+		ScanlineFlushed = false;
+	}
 	return true;
 }
 
-void IO::FlushScanline( uint32 y )
+void IO::SetFrameDump( bool set )
 {
-	if (y == 239)
-	{
-		SDL_Flip(screen);
-	}
-}
-
-void IO::SetPixel( uint32 x, uint32 y, uint32 pixel, int32 offset )
-{
-	((uint32*) screen->pixels) [y * 256 + x] = Palette[offset][PreviousPixel%64][pixel];
-	PreviousPixel = pixel;
-}
-
-float IO::GammaFix( float f )
-{
-	return f <= 0.f ? 0.f : std::pow(f, 2.2f / 1.8f);
-}
-
-int32 IO::Clamp( int32 i )
-{
-	return i > 255 ? 255 : i;
+	FrameDump = true;
 }

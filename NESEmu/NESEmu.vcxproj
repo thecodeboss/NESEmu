@@ -155,7 +155,6 @@
     <ClCompile Include="APU.cpp" />
     <ClCompile Include="CPU.cpp" />
     <ClCompile Include="IO.cpp" />
-    <ClCompile Include="Joel.cpp" />
     <ClCompile Include="NESGame.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PPU.cpp" />

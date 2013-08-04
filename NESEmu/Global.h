@@ -6,15 +6,18 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <string>
+#include <cstdlib>
+#include <stdint.h>
 #include <SDL.h>
 #undef main
 
-typedef unsigned char uint8;
-typedef unsigned short uint16;
-typedef unsigned int uint32;
+typedef uint_least8_t uint8;
+typedef uint_least16_t uint16;
+typedef uint_least32_t uint32;
 typedef unsigned long long uint64;
 
-typedef signed char int8;
+typedef int_least8_t int8;
 typedef signed short int16;
 typedef signed int int32;
 typedef signed long long int64;
@@ -34,5 +37,11 @@ struct Bit {
 	Bit& operator++ () { return *this = *this + 1; }
 	unsigned operator++ (int) { unsigned r = *this; ++*this; return r; }
 };
+
+char ToHex(uint8 in);
+
+void PrintHex(uint8 in);
+
+void ReadHex(std::ifstream& input, uint8& output);
 
 #endif // Global_h__

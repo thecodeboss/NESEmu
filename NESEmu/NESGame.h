@@ -7,7 +7,7 @@
 class NESGame
 {
 public:
-	uint8 mappernum;
+	uint8 MapperNum;
 	std::vector<uint8> ROM, VRAM;
 	uint8 NRAM[0x1000], PRAM[0x2000];
 	static const uint32 VROMGranularity = 0x0400;
@@ -22,9 +22,14 @@ public:
 	NESGame();
 	void SetMapperNum(uint8 in);
 	void SetROMSize( uint8 numROM16 );
-	void SetVRAMSize( uint8 numROM16 );
+	void SetVRAMSize( uint8 numVROM8 );
 	void LoadROM(std::ifstream& InputGame);
 	void LoadVRAM(std::ifstream& InputGame);
+	uint8 Read( uint32 Address );
+	uint8 Write( uint32 Address, uint8 Value );
+	void SetVROM( uint32 Size, uint32 BaseAddress, uint32 Index );
+	void SetROM( uint32 Size, uint32 BaseAddress, uint32 Index );
+	void Init();
 };
 
 #endif // NESGame_h__
