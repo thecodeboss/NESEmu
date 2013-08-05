@@ -129,11 +129,6 @@ bool CPU::Op()
 	// Read the next instruction
 	uint32 op = Read(PC++);
 
-	/*if (Cycles > 29784)
-	{
-		PrintHex(P.raw);
-	}*/
-
 	if (Reset) op = 0x101; // Force reset
 	else if (NMINow && !NMIEdgeDetected)
 	{

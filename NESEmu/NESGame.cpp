@@ -1,4 +1,5 @@
 #include "NESGame.h"
+#include "CPU.h"
 using namespace std;
 
 NESGame::NESGame() : MapperNum(0), VRAM(0x2000)
@@ -8,6 +9,7 @@ NESGame::NESGame() : MapperNum(0), VRAM(0x2000)
 	NameTable[2] = NRAM + 0x0000;
 	NameTable[3] = NRAM + 0x0400;
 	for (int32 i=0; i<0x1000; i++) NRAM[i] = 0;
+	for (int32 i=0; i<0x800; i++) ExtraNRAM[i] = 0;
 	for (int32 i=0; i<0x2000; i++) WRAM[i] = 0;
 }
 
@@ -86,6 +88,76 @@ uint8 NESGame::Write( uint32 Address, uint8 Value )
 			Value &= Read(Address); // Simulate bus conflict
 			SetVROM(0x2000, 0x0000, (Value&3));
 			break;
+		case 4: // Super Mario Bros 2, 3, etc.
+			{
+				static uint8 Registers[8] = {0,2,4,5,6,7,0,1};
+				switch (Address & 0xE001)
+				{
+				case 0x8000:
+					if ((Value & 0x40) != (MMC3Cmd & 0x40))
+					{
+						MMC3ROM(Value, Registers);
+					}
+					if ((Value & 0x80) != (MMC3Cmd & 0x80))
+					{
+						MMC3VROM(Value, Registers);
+					}
+					MMC3Cmd = Value;
+					break;
+				case 0x8001:
+					{
+						int32 base = (MMC3Cmd & 0x80) << 5;
+						Registers[MMC3Cmd & 7] = Value;
+						switch (MMC3Cmd & 7)
+						{
+						case 0:
+							SetVROM(0x400, base ^ 0x000, Value & (~1));
+							SetVROM(0x400, base ^ 0x400, Value | 1);
+							break;
+						case 1:
+							SetVROM(0x400, base ^ 0x800, Value & (~1));
+							SetVROM(0x400, base ^ 0xC00, Value | 1);
+							break;
+						case 2:
+							SetVROM(0x400, base ^ 0x1000, Value);
+							break;
+						case 3:
+							SetVROM(0x400, base ^ 0x1400, Value);
+							break;
+						case 4:
+							SetVROM(0x400, base ^ 0x1800, Value);
+							break;
+						case 5:
+							SetVROM(0x400, base ^ 0x1C00, Value);
+							break;
+						case 6:
+							if (MMC3Cmd & 0x40) SetROM(0x4000, 0xC000, Value);
+							else SetROM(0x4000, 0x8000, Value);
+							break;
+						case 7:
+							SetROM(0x4000, 0xA000, Value);
+							break;
+						}
+						break;
+					}
+				case 0xA000:
+					SetMirrorType((Value & 1) ^ 1);
+					break;
+				case 0xA001:
+					// A001B = Value;
+					break;
+				case 0xC000:
+				case 0xC001:
+					break;
+				case 0xE000:
+					cpu->SetInterrupt(false);
+					break;
+				case 0xE001:
+					cpu->SetInterrupt(true);
+					break;
+				}
+				break;
+			}
 		case 7: // Some rare games
 			SetROM(0x8000, 0x8000, (Value&7));
 			NameTable[0] = NameTable[1] = NameTable[2] = NameTable[3] = &NRAM[0x400 * ((Value>>4)&1)];
@@ -213,7 +285,6 @@ void NESGame::SetMirroring( uint8 ctrlByte1 )
 
 	if (Mirroring == 2)
 	{
-		ExtraNRAM = (uint8*)malloc(2048);
 		SetupMirroring(4, 1, ExtraNRAM);
 	}
 	else if (Mirroring >= 0x10)
@@ -258,4 +329,35 @@ void NESGame::SetMirrorType( uint8 t )
 			break;
 		}
 	}
+}
+
+void NESGame::MMC3ROM( uint8 Value, uint8* Registers )
+{
+	if (Value & 0x40)
+	{
+		SetROM(0x4000, 0xC000, Registers[6]);
+		SetROM(0x4000, 0x8000, ~1);
+	}
+	else
+	{
+		SetROM(0x4000, 0x8000, Registers[6]);
+		SetROM(0x4000, 0xC000, ~1);
+	}
+	SetROM(0x4000, 0xA000, Registers[7]);
+	SetROM(0x4000, 0xE000, ~0);
+}
+
+void NESGame::MMC3VROM( uint8 Value, uint8* Registers )
+{
+	uint32 base = (Value & 0x80) << 5;
+
+	SetVROM(0x400, base ^ 0x000, Registers[0] & (~1));
+	SetVROM(0x400, base ^ 0x400, Registers[0] | 1);
+	SetVROM(0x400, base ^ 0x800, Registers[0] & (~1));
+	SetVROM(0x400, base ^ 0xC00, Registers[0] | 1);
+
+	SetVROM(0x400, base ^ 0x1000, Registers[2]);
+	SetVROM(0x400, base ^ 0x1400, Registers[3]);
+	SetVROM(0x400, base ^ 0x1800, Registers[4]);
+	SetVROM(0x400, base ^ 0x1C00, Registers[5]);
 }

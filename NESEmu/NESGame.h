@@ -3,24 +3,27 @@
 
 #include "Global.h"
 #include <vector>
+class CPU;
 
 class NESGame
 {
 public:
 	uint8 MapperNum;
 	std::vector<uint8> ROM, VRAM;
-	uint8 NRAM[0x1000], WRAM[0x2000];
+	uint8 NRAM[0x1000], WRAM[0x2000], ExtraNRAM[0x800];
 	static const uint32 VROMGranularity = 0x0400;
 	static const uint32 ROMGranularity = 0x2000;
 	static const uint32 VROMPages = 0x2000 / VROMGranularity;
 	static const uint32 ROMPages = 0x10000 / ROMGranularity;
 
+	CPU* cpu;
+
 	uint8* Banks[ROMPages];
 	uint8* VBanks[VROMPages];
 	uint8* NameTable[4];
 	uint8 Mirroring;
-	uint8* ExtraNRAM;
 	uint8 MirrorHard;
+	uint8 MMC3Cmd;
 	NESGame();
 	void SetMapperNum(uint8 in);
 	void SetROMSize( uint8 numROM16 );
@@ -39,6 +42,8 @@ public:
 	void SetMirroring( uint8 ctrlByte1 );
 	void SetupMirroring( uint8 m, uint8 hard, uint8* extra );
 	void SetMirrorType( uint8 t );
+	void MMC3ROM( uint8 Value, uint8* Registers );
+	void MMC3VROM( uint8 Value, uint8* Registers );
 };
 
 #endif // NESGame_h__
