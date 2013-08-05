@@ -16,6 +16,9 @@ class IO
 	bool NTSCMode;
 	int32 VerticalScale;
 	int32 HorizontalScale;
+	int32 CurrentJoystick[2];
+	int32 NextJoystick[2];
+	int32 JoystickPosition[2];
 	float GammaFix(float f);
 	uint32 Clamp(float i);
 
@@ -28,6 +31,8 @@ public:
 	bool Poll();
 	void SetFrameDump( bool set );
 	void SetNTSCMode(bool b);
+	void StrobeJoystick(uint32 Value);
+	uint8 ReadJoystick(uint32 Index);
 };
 
 #endif // IO_h__

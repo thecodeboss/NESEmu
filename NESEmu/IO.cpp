@@ -5,7 +5,12 @@ using namespace std;
 
 IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false)
 {
-
+	CurrentJoystick[0] = 0;
+	CurrentJoystick[1] = 0;
+	NextJoystick[0] = 0;
+	NextJoystick[1] = 0;
+	JoystickPosition[0] = 0;
+	JoystickPosition[1] = 0;
 }
 
 bool IO::Init(int32 hScale, int32 vScale)
@@ -127,9 +132,40 @@ bool IO::Poll()
 {
 	if (ScanlineFlushed)
 	{
+		static const uint8 masks[8] = {0x20,0x10,0x40,0x80,0x04,0x08,0x02,0x01};
 		SDL_PollEvent( &event );
-		if( event.type == SDL_QUIT ) return false;
+
+		if (event.type == SDL_KEYDOWN)
+			switch( event.key.keysym.sym )
+			{
+				#define t(a,b) case a: NextJoystick[0] |= masks[b]; break;
+					t(SDLK_z, 0)
+					t(SDLK_x, 1)
+					t(SDLK_LCTRL, 2)t(SDLK_RCTRL, 2)
+					t(SDLK_RETURN, 3)
+					t(SDLK_UP, 4)
+					t(SDLK_DOWN, 5)
+					t(SDLK_LEFT, 6)
+					t(SDLK_RIGHT, 7)
+				#undef t
+			}
+		else if (event.type == SDL_KEYUP)
+			switch( event.key.keysym.sym )
+			{
+				#define t(a,b) case a: NextJoystick[0] &= ~masks[b]; break;
+					t(SDLK_z, 0)
+					t(SDLK_x, 1)
+					t(SDLK_LCTRL, 2)t(SDLK_RCTRL, 2)
+					t(SDLK_RETURN, 3)
+					t(SDLK_UP, 4)
+					t(SDLK_DOWN, 5)
+					t(SDLK_LEFT, 6)
+					t(SDLK_RIGHT, 7)
+				#undef t
+			}
+		else if( event.type == SDL_QUIT ) return false;
 		ScanlineFlushed = false;
+
 	}
 	return true;
 }
@@ -142,4 +178,21 @@ void IO::SetFrameDump( bool set )
 void IO::SetNTSCMode( bool b )
 {
 	NTSCMode = b;
+}
+
+void IO::StrobeJoystick(uint32 Value)
+{
+	if (Value)
+	{
+		CurrentJoystick[0] = NextJoystick[0];
+		CurrentJoystick[1] = NextJoystick[1];
+		JoystickPosition[0] = 0;
+		JoystickPosition[1] = 0;
+	}
+}
+
+uint8 IO::ReadJoystick( uint32 Index )
+{
+	static const uint8 masks[8] = {0x20,0x10,0x40,0x80,0x04,0x08,0x02,0x01};
+	return ((CurrentJoystick[Index] & masks[JoystickPosition[Index]++ & 7]) ? 1 : 0);
 }

@@ -13,8 +13,10 @@ uint8 CPU::Read(uint16 Address)
 			return 0;
 		case 0x15:
 			return 0; // APU ----- TODO
-		case 0x16: case 0x17:
-			return 0; // Joystick Read ----- TODO
+		case 0x16:
+			return io->ReadJoystick(0);
+		case 0x17:
+			return io->ReadJoystick(1);
 		default:
 			return 0;
 			break;
@@ -39,7 +41,8 @@ uint8 CPU::Write(uint16 Address, uint8 Value)
 		case 0x15:
 			break; // APU TODO
 		case 0x16:
-			break; // Joystick Write ----- TODO
+			io->StrobeJoystick(Value);
+			break;
 		case 0x17: // APU
 		default:
 			break;

@@ -62,7 +62,7 @@ void PPU::Tick()
 		switch (Scanline += 1)
 		{
 		case 241: // Vertical blanking begins
-			// Handle joystick here
+			
 			VBlankState = 2;
 			break;
 		case 261: // Begin rendering
