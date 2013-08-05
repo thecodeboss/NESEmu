@@ -9,7 +9,7 @@ class NESGame
 public:
 	uint8 MapperNum;
 	std::vector<uint8> ROM, VRAM;
-	uint8 NRAM[0x1000], PRAM[0x2000];
+	uint8 NRAM[0x1000], WRAM[0x2000];
 	static const uint32 VROMGranularity = 0x0400;
 	static const uint32 ROMGranularity = 0x2000;
 	static const uint32 VROMPages = 0x2000 / VROMGranularity;
@@ -18,7 +18,9 @@ public:
 	uint8* Banks[ROMPages];
 	uint8* VBanks[VROMPages];
 	uint8* NameTable[4];
-
+	uint8 Mirroring;
+	uint8* ExtraNRAM;
+	uint8 MirrorHard;
 	NESGame();
 	void SetMapperNum(uint8 in);
 	void SetROMSize( uint8 numROM16 );
@@ -31,6 +33,12 @@ public:
 	void SetROM( uint32 Size, uint32 BaseAddress, uint32 Index );
 	void Init();
 	void Dump();
+	void MMC1ROM( uint8* Registers );
+	void MMC1VROM( uint8* Registers );
+	void MMC1Mirror( uint8* Registers );
+	void SetMirroring( uint8 ctrlByte1 );
+	void SetupMirroring( uint8 m, uint8 hard, uint8* extra );
+	void SetMirrorType( uint8 t );
 };
 
 #endif // NESGame_h__

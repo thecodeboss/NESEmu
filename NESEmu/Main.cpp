@@ -32,6 +32,7 @@ int main(int argc, char** argv)
 
 	io->Init(2, 2);
 	io->SetNTSCMode(false);
+	io->SetFPS(60.0f);
 
 	if (argc > 2 && !strcmp(argv[2],"framedump")) io->SetFrameDump(true);
 
@@ -62,6 +63,7 @@ int main(int argc, char** argv)
 	for(int i=0;i<8;i++) ReadHex(InputGame, temp); // Read 8 junk bytes
 
 	game->SetMapperNum(ctrlByte2 | (ctrlByte1 >> 4));
+	game->SetMirroring(ctrlByte1);
 	game->SetROMSize(numROM16);
 	game->SetVRAMSize(numVROM8);
 	game->LoadROM(InputGame);
@@ -71,10 +73,10 @@ int main(int argc, char** argv)
 
 	cpu->Run();
 
-	cpu->Dump();
+	/*cpu->Dump();
 	ppu->Dump();
 	apu->Dump();
-	game->Dump();
+	game->Dump();*/
 
 	return 0;
 }

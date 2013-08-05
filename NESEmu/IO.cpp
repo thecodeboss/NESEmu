@@ -3,7 +3,7 @@
 #include <sstream>
 using namespace std;
 
-IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false)
+IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false), StartTime(0)
 {
 	CurrentJoystick[0] = 0;
 	CurrentJoystick[1] = 0;
@@ -38,7 +38,8 @@ void IO::FlushScanline( uint32 y )
 {
 	if (y == 239)
 	{
-		SDL_Flip(screen);
+		FrameCount++;
+		WaitForClock();
 		ScanlineFlushed = true;
 		if (FrameDump)
 		{
@@ -50,9 +51,7 @@ void IO::FlushScanline( uint32 y )
 			s << FrameCount << ".bmp";
 			std::string Filename;
 			s >> Filename;
-			std::cout << Filename << std::endl;
 			SDL_SaveBMP( screen, Filename.c_str());
-			FrameCount++;
 		}
 	}
 }
@@ -88,7 +87,8 @@ void IO::InitPalettes()
 	for (int32 i=0; i<3; i++) for (int32 j=0; j<64; j++) for (int32 k=0; k<512; k++)
 		NTSCPalette[i][j][k] = 0;
 
-	// Set the 64 colours of the palette, increasing their intensity
+	// Set the 64 colours of the palette, increasing their intensity by 4x
+	// (It seems to look nice like this)
 	for (int32 i=0; i<64; i++)
 	{
 		Palette[i] = Palettes::default[i];
@@ -96,7 +96,8 @@ void IO::InitPalettes()
 		Palette[i] = 0x10000*Clamp(pr*4.f) + 0x00100*Clamp(pg*4.f) + 0x00001*Clamp(pb*4.f);
 	}
 
-	// Note: the following snippet is largely taken from Bisqwit
+	// Note: the following nested loop is largely taken from Bisqwit and the NES Dev Wiki
+	// http://wiki.nesdev.com/w/index.php/NTSC_video
 	for(int32 o=0; o<3; ++o)
 		for(int32 u=0; u<3; ++u)
 			for(int32 p0=0; p0<512; ++p0)
@@ -195,4 +196,31 @@ uint8 IO::ReadJoystick( uint32 Index )
 {
 	static const uint8 masks[8] = {0x20,0x10,0x40,0x80,0x04,0x08,0x02,0x01};
 	return ((CurrentJoystick[Index] & masks[JoystickPosition[Index]++ & 7]) ? 1 : 0);
+}
+
+void IO::SetFPS( float v )
+{
+	FPS = v;
+}
+
+void IO::StartClock()
+{
+	StartTime = SDL_GetTicks();
+}
+
+void IO::WaitForClock()
+{
+	bool AtLeastOnce = false;
+	while (true)
+	{
+		float msRunningTime = (float)(SDL_GetTicks() - StartTime);
+		float ShouldBeOnFrame = FPS*msRunningTime/1000.f;
+		float AheadByFrames = FrameCount - ShouldBeOnFrame;
+		if (AheadByFrames >= 1.0f || !AtLeastOnce)
+		{
+			SDL_Flip(screen);
+			AtLeastOnce = true;
+		}
+		else break;
+	}
 }

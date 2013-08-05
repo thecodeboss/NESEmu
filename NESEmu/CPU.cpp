@@ -104,6 +104,7 @@ void CPU::Init()
 
 void CPU::Run()
 {
+	io->StartClock();
 	while (io->Poll() /*&& Cycles < 2000000*/)
 	{
 		Op();

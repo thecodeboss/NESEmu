@@ -19,6 +19,8 @@ class IO
 	int32 CurrentJoystick[2];
 	int32 NextJoystick[2];
 	int32 JoystickPosition[2];
+	float FPS;
+	uint32 StartTime;
 	float GammaFix(float f);
 	uint32 Clamp(float i);
 
@@ -33,6 +35,9 @@ public:
 	void SetNTSCMode(bool b);
 	void StrobeJoystick(uint32 Value);
 	uint8 ReadJoystick(uint32 Index);
+	void SetFPS( float v );
+	void StartClock();
+	void WaitForClock();
 };
 
 #endif // IO_h__
