@@ -1,9 +1,8 @@
 #include "IO.h"
 #include "Palette.h"
-#include <sstream>
 using namespace std;
 
-IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false), StartTime(0)
+IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false), StartTime(0), joystick(NULL), bXBOX360Controller(false), AudioRunning(false), ReadInProgress(false)
 {
 	CurrentJoystick[0] = 0;
 	CurrentJoystick[1] = 0;
@@ -11,12 +10,13 @@ IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false),
 	NextJoystick[1] = 0;
 	JoystickPosition[0] = 0;
 	JoystickPosition[1] = 0;
+	for (int32 i=0; i<4096; i++) AudioStreamBuffer[i] = 0;
 }
 
 bool IO::Init(int32 hScale, int32 vScale)
 {
 	SDL_Init(SDL_INIT_VIDEO);
-	SDL_InitSubSystem(SDL_INIT_VIDEO);
+	SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO);
 	screen = SDL_SetVideoMode(hScale*256, vScale*240, 32, 0);
 	SDL_WM_SetCaption("The Code Boss's NES Emulator", NULL );
 
@@ -29,7 +29,50 @@ bool IO::Init(int32 hScale, int32 vScale)
 	HorizontalScale = hScale;
 	VerticalScale = vScale;
 
+	desired = (SDL_AudioSpec *) malloc(sizeof(SDL_AudioSpec));
+	obtained = (SDL_AudioSpec *) malloc(sizeof(SDL_AudioSpec));
+	desired->freq = 176400;
+	desired->format = AUDIO_S16;
+	desired->samples = 1024;
+	desired->callback = NonMemberReadAudioMix;
+	desired->userdata = this;
+	desired->channels = 1;
+
+	if ( SDL_OpenAudio(desired, obtained) < 0 ) {
+		cout << "AudioMixer, Unable to open audio: " << SDL_GetError() << endl;
+		return false;
+	}
+
+	//resampler = new Resampler();
+	//resampler->setup(176400*4, 176400, 1, 16);
+
+	//resampler = swr_alloc_set_opts(NULL, AV_CH_LAYOUT_MONO, AV_SAMPLE_FMT_U8, 44100, AV_CH_LAYOUT_MONO, AV_SAMPLE_FMT_U8, 176400*4, 0, NULL);
+	//resampler = av_audio_resample_init(1, 1, 44100, 176400*4, AV_SAMPLE_FMT_U8, AV_SAMPLE_FMT_U8, 16, 10, 0, 1);
+
 	InitPalettes();
+
+	if (SDL_NumJoysticks())
+	{
+		cout << SDL_NumJoysticks() << " joysticks were found.\n\nThe names of the joysticks are:\n";
+
+		for(int32 i=0; i < SDL_NumJoysticks(); i++ )
+		{
+			cout << SDL_JoystickName(i) << endl;
+			if (strcmp(SDL_JoystickName(i), "Controller (XBOX 360 For Windows)") == 0 && !bXBOX360Controller)
+			{
+				SDL_JoystickEventState(SDL_ENABLE);
+				joystick = SDL_JoystickOpen(0);
+				cout << "Using Joystick 0 for Player 1, Keyboard for Player 2" << endl;
+				bXBOX360Controller = true;
+
+				// Initialize XBOX 360 Controller Hat values
+				HatStatus[SDL_HAT_UP] = false;
+				HatStatus[SDL_HAT_DOWN] = false;
+				HatStatus[SDL_HAT_LEFT] = false;
+				HatStatus[SDL_HAT_RIGHT] = false;
+			}
+		}
+	}
 
 	return true;
 }
@@ -39,6 +82,13 @@ void IO::FlushScanline( uint32 y )
 	if (y == 239)
 	{
 		FrameCount++;
+
+		if (!AudioRunning)
+		{
+			SDL_PauseAudio(0);
+			AudioRunning = true;
+		}
+
 		WaitForClock();
 		ScanlineFlushed = true;
 		if (FrameDump)
@@ -133,38 +183,11 @@ bool IO::Poll()
 {
 	if (ScanlineFlushed)
 	{
-		static const uint8 masks[8] = {0x20,0x10,0x40,0x80,0x04,0x08,0x02,0x01};
 		SDL_PollEvent( &event );
 
-		if (event.type == SDL_KEYDOWN)
-			switch( event.key.keysym.sym )
-			{
-				#define t(a,b) case a: NextJoystick[0] |= masks[b]; break;
-					t(SDLK_z, 0)
-					t(SDLK_x, 1)
-					t(SDLK_LCTRL, 2)t(SDLK_RCTRL, 2)
-					t(SDLK_RETURN, 3)
-					t(SDLK_UP, 4)
-					t(SDLK_DOWN, 5)
-					t(SDLK_LEFT, 6)
-					t(SDLK_RIGHT, 7)
-				#undef t
-			}
-		else if (event.type == SDL_KEYUP)
-			switch( event.key.keysym.sym )
-			{
-				#define t(a,b) case a: NextJoystick[0] &= ~masks[b]; break;
-					t(SDLK_z, 0)
-					t(SDLK_x, 1)
-					t(SDLK_LCTRL, 2)t(SDLK_RCTRL, 2)
-					t(SDLK_RETURN, 3)
-					t(SDLK_UP, 4)
-					t(SDLK_DOWN, 5)
-					t(SDLK_LEFT, 6)
-					t(SDLK_RIGHT, 7)
-				#undef t
-			}
-		else if( event.type == SDL_QUIT ) return false;
+		HandleInput();
+		
+		if( event.type == SDL_QUIT ) return false;
 		ScanlineFlushed = false;
 
 	}
@@ -223,4 +246,129 @@ void IO::WaitForClock()
 		}
 		else break;
 	}
+}
+
+void IO::WriteAudioStream( uint8 in )
+{
+	AudioStream.push(in);
+	if (AudioStream.size() >= 10240 && ReadInProgress == false)
+	{
+		for (int i=0; i<2048 && AudioStream.size() > 0; i++) {
+			//uint8 temp = 0;
+			//for (int j=0; j<2; j++) {temp += AudioStream.front();AudioStream.pop();}
+			//uint8 temp = AudioStream.front();
+			AudioStreamBuffer[i] = AudioStream.front();
+			AudioStream.pop();i++;
+			AudioStreamBuffer[i] = AudioStream.front();
+			for (int j=0; j<9; j++) AudioStream.pop();
+			//AudioStreamBuffer[i] = AudioStream.front();
+			//for (int j=0; j<4; j++) AudioStream.pop();
+			//AudioStream.pop();
+		}
+	}
+}
+
+void IO::HandleInput()
+{
+	static const uint8 masks[8] = {0x20,0x10,0x40,0x80,0x04,0x08,0x02,0x01};
+	uint8 KeyboardPlayer = joystick ? 1 : 0;
+
+	// Handle XBOX 360 Controller events
+	if (bXBOX360Controller)
+	{
+		if (event.type == SDL_JOYBUTTONDOWN)
+		{
+			switch (event.jbutton.button)
+			{
+				#define t(a,b) case a: NextJoystick[0] |= masks[b]; break;
+					t(XBOX360_A, 0)
+					t(XBOX360_X, 1)
+					t(XBOX360_BACK, 2)
+					t(XBOX360_START, 3)
+				#undef t
+			}
+		}
+		else if (event.type == SDL_JOYBUTTONUP)
+		{
+			switch (event.jbutton.button)
+			{
+				#define t(a,b) case a: NextJoystick[0] &= ~masks[b]; break;
+					t(XBOX360_A, 0)
+					t(XBOX360_X, 1)
+					t(XBOX360_BACK, 2)
+					t(XBOX360_START, 3)
+				#undef t
+			}
+		}
+		else if (event.type == SDL_JOYHATMOTION)
+		{
+			#define t(s,b) if (event.jhat.value & s) HatStatus[s] = true; else HatStatus[s] = false;
+				t(SDL_HAT_UP, 4)
+				t(SDL_HAT_DOWN, 5)
+				t(SDL_HAT_LEFT, 6)
+				t(SDL_HAT_RIGHT, 7)
+			#undef t
+		}
+		#define t(s,b) if (HatStatus[s]) NextJoystick[0] |= masks[b]; else NextJoystick[0] &= ~masks[b];
+			t(SDL_HAT_UP, 4)
+			t(SDL_HAT_DOWN, 5)
+			t(SDL_HAT_LEFT, 6)
+			t(SDL_HAT_RIGHT, 7)
+		#undef t
+	}
+
+	// Handle keyboard events
+	if (event.type == SDL_KEYDOWN)
+		switch( event.key.keysym.sym )
+		{
+			#define t(a,b) case a: NextJoystick[KeyboardPlayer] |= masks[b]; break;
+				t(SDLK_z, 0)
+				t(SDLK_x, 1)
+				t(SDLK_LCTRL, 2)t(SDLK_RCTRL, 2)
+				t(SDLK_RETURN, 3)
+				t(SDLK_UP, 4)
+				t(SDLK_DOWN, 5)
+				t(SDLK_LEFT, 6)
+				t(SDLK_RIGHT, 7)
+			#undef t
+		}
+	else if (event.type == SDL_KEYUP)
+		switch( event.key.keysym.sym )
+		{
+			#define t(a,b) case a: NextJoystick[KeyboardPlayer] &= ~masks[b]; break;
+				t(SDLK_z, 0)
+				t(SDLK_x, 1)
+				t(SDLK_LCTRL, 2)t(SDLK_RCTRL, 2)
+				t(SDLK_RETURN, 3)
+				t(SDLK_UP, 4)
+				t(SDLK_DOWN, 5)
+				t(SDLK_LEFT, 6)
+				t(SDLK_RIGHT, 7)
+			#undef t
+		}
+}
+
+void IO::ReadAudioMix( void *unused, uint8 *stream, int32 len )
+{
+	ReadInProgress = true;
+	//const uint8** t = const_cast<const uint8 **>(reinterpret_cast<uint8 **>(&AudioStreamBuffer));
+	//swr_convert(resampler, &stream, 8192, t, 8192);
+	//audio_resample(resampler, tempstream, AudioStreamBuffer, 8192);
+	/*resampler->inp_count = 16384;
+	resampler->out_count = 4096;
+	resampler->inp_data = AudioStreamBuffer;
+	resampler->out_data = tempstream;
+	resampler->process();*/
+	for (int i=0; i<len; i++) {
+		//uint8 temp = 0;
+		//for (int j=0; j<4; j++) temp += AudioStreamBuffer[4*i+j];
+		//stream[i] = static_cast<uint8>(tempstream[i]);
+		stream[i] = AudioStreamBuffer[i];
+	}
+	ReadInProgress = false;
+}
+
+void NonMemberReadAudioMix( void *io, uint8 *stream, int32 len )
+{
+	static_cast<IO*>(io)->ReadAudioMix(NULL, stream, len);
 }

@@ -46,6 +46,7 @@ int main(int argc, char** argv)
 	ppu->SetGame(game);
 	ppu->Init();
 
+	apu->SetIO(io);
 	apu->SetCPU(cpu);
 
 	ifstream InputGame(argv[1], ios::binary);

@@ -12,7 +12,7 @@ uint8 CPU::Read(uint16 Address)
 		case 0x14:
 			return 0;
 		case 0x15:
-			return 0; // APU ----- TODO
+			return apu->Read();
 		case 0x16:
 			return io->ReadJoystick(0);
 		case 0x17:
@@ -39,12 +39,14 @@ uint8 CPU::Write(uint16 Address, uint8 Value)
 			for(uint32 b=0; b<256; ++b) Write(0x2004, Read((Value&7)*0x0100+b));
 			break;
 		case 0x15:
-			break; // APU TODO
+			apu->Write(0x15,Value);
+			break;
 		case 0x16:
 			io->StrobeJoystick(Value);
 			break;
-		case 0x17: // APU
+		case 0x17:
 		default:
+			apu->Write(Address&0x1F, Value);
 			break;
 		}
 	}
