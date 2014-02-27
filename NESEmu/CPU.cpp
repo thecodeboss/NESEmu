@@ -109,6 +109,11 @@ void CPU::Run()
 	io->StartClock();
 	while (io->Poll() /*&& Cycles < 2000000*/)
 	{
+		if (io->ShouldSaveGame)
+		{
+			game->Save();
+			io->ShouldSaveGame = false;
+		}
 		Op();
 	}
 }

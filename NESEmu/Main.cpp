@@ -35,6 +35,7 @@ int main(int argc, char** argv)
 	io->SetFPS(60.0f);
 
 	if (argc > 2 && !strcmp(argv[2],"framedump")) io->SetFrameDump(true);
+	if (argc > 2 && !strcmp(argv[3],"audiodump")) io->SetAudioDump(true);
 
 	cpu->SetIO(io);
 	cpu->SetAPU(apu);
@@ -63,14 +64,16 @@ int main(int argc, char** argv)
 
 	for(int i=0;i<8;i++) ReadHex(InputGame, temp); // Read 8 junk bytes
 
+	game->SetName(argv[1]);
 	game->SetMapperNum(ctrlByte2 | (ctrlByte1 >> 4));
 	game->SetMirroring(ctrlByte1);
 	game->SetROMSize(numROM16);
 	game->SetVRAMSize(numVROM8);
 	game->LoadROM(InputGame);
 	game->LoadVRAM(InputGame);
-
 	game->Init();
+	game->FindAndLoadSave();
+
 
 	cpu->Run();
 

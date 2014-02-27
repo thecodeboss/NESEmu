@@ -64,22 +64,14 @@ void APU::Tick()
 	// Mix the audio: Get the momentary sample from each channel and mix them.
 #define s(c) static_cast<float>(TickChannel(channels[c], c==1 ? 0 : c))
 	auto v = [](float m,float n, float d) { return n!=0.f ? m/n : d; };
-	short sample = static_cast<short>(30000 *
+	float sample = 30000 *
 		(v(95.88f,  (100.f + v(8128.f, s(0) + s(1), -100.f)), 0.f)
 		+  v(159.79f, (100.f + v(1.0, s(2)/8227.f + s(3)/12241.f + s(4)/22638.f, -100.f)), 0.f)
 		- 0.5f
-		));
+		);
 #undef s
-	// I cheat here: I did not bother to learn how to use SDL mixer, let alone use it in <5 lines of code,
-	// so I simply use a combination of external programs for outputting the audio.
-	// Hooray for Unix principles! A/V sync will be ensured in post-process.
-	//return; // Disable sound because already device is in use
-	static FILE* fp = fopen("test.out", "wb");
-	io->WriteAudioStream(uint8(sample & 0xFF));
-	io->WriteAudioStream(uint8(sample / 256));
-	fputc(sample, fp);
-	fputc(sample/256, fp);
-	// sox -t raw -c1 -b 16 -e signed-integer -r 1789800 test.raw -t wav -c2 -r 48000 test.wav
+
+	io->WriteAudioStream(sample);
 }
 
 void APU::Dump()

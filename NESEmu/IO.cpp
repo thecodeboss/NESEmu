@@ -2,7 +2,7 @@
 #include "Palette.h"
 using namespace std;
 
-IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false), StartTime(0), joystick(NULL), bXBOX360Controller(false), AudioRunning(false), ReadInProgress(false)
+IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), AudioDump(false), NTSCMode(false), StartTime(0), joystick(NULL), bXBOX360Controller(false), AudioRunning(false), ReadInProgress(false), ShouldSaveGame(false)
 {
 	CurrentJoystick[0] = 0;
 	CurrentJoystick[1] = 0;
@@ -10,7 +10,7 @@ IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), NTSCMode(false),
 	NextJoystick[1] = 0;
 	JoystickPosition[0] = 0;
 	JoystickPosition[1] = 0;
-	for (int32 i=0; i<4096; i++) AudioStreamBuffer[i] = 0;
+	for (int32 i=0; i<38182; i++) AudioStreamBuffer[i] = 0;
 }
 
 bool IO::Init(int32 hScale, int32 vScale)
@@ -31,7 +31,7 @@ bool IO::Init(int32 hScale, int32 vScale)
 
 	desired = (SDL_AudioSpec *) malloc(sizeof(SDL_AudioSpec));
 	obtained = (SDL_AudioSpec *) malloc(sizeof(SDL_AudioSpec));
-	desired->freq = 176400;
+	desired->freq = 48000;
 	desired->format = AUDIO_S16;
 	desired->samples = 1024;
 	desired->callback = NonMemberReadAudioMix;
@@ -43,11 +43,8 @@ bool IO::Init(int32 hScale, int32 vScale)
 		return false;
 	}
 
-	//resampler = new Resampler();
-	//resampler->setup(176400*4, 176400, 1, 16);
-
-	//resampler = swr_alloc_set_opts(NULL, AV_CH_LAYOUT_MONO, AV_SAMPLE_FMT_U8, 44100, AV_CH_LAYOUT_MONO, AV_SAMPLE_FMT_U8, 176400*4, 0, NULL);
-	//resampler = av_audio_resample_init(1, 1, 44100, 176400*4, AV_SAMPLE_FMT_U8, AV_SAMPLE_FMT_U8, 16, 10, 0, 1);
+	resampler = new Resampler();
+	resampler->setup(1789800, 48000, 1, 16);
 
 	InitPalettes();
 
@@ -95,9 +92,10 @@ void IO::FlushScanline( uint32 y )
 		{
 			std::stringstream s;
 			s << "..\\frames\\frame";
-			if (FrameCount < 10) s << "000";
-			else if (FrameCount < 100) s << "00";
-			else if (FrameCount < 1000) s << "0";
+			if (FrameCount < 10) s << "0000";
+			else if (FrameCount < 100) s << "000";
+			else if (FrameCount < 1000) s << "00";
+			else if (FrameCount < 10000) s << "0";
 			s << FrameCount << ".bmp";
 			std::string Filename;
 			s >> Filename;
@@ -199,6 +197,11 @@ void IO::SetFrameDump( bool set )
 	FrameDump = true;
 }
 
+void IO::SetAudioDump( bool dump )
+{
+	AudioDump = true;
+}
+
 void IO::SetNTSCMode( bool b )
 {
 	NTSCMode = b;
@@ -248,23 +251,20 @@ void IO::WaitForClock()
 	}
 }
 
-void IO::WriteAudioStream( uint8 in )
+void IO::WriteAudioStream( float in )
 {
-	AudioStream.push(in);
-	if (AudioStream.size() >= 10240 && ReadInProgress == false)
+	static int AudioStreamIndex = 0;
+	AudioStreamBuffer[AudioStreamIndex++] = in;
+	if (AudioStreamIndex == 38182)
 	{
-		for (int i=0; i<2048 && AudioStream.size() > 0; i++) {
-			//uint8 temp = 0;
-			//for (int j=0; j<2; j++) {temp += AudioStream.front();AudioStream.pop();}
-			//uint8 temp = AudioStream.front();
-			AudioStreamBuffer[i] = AudioStream.front();
-			AudioStream.pop();i++;
-			AudioStreamBuffer[i] = AudioStream.front();
-			for (int j=0; j<9; j++) AudioStream.pop();
-			//AudioStreamBuffer[i] = AudioStream.front();
-			//for (int j=0; j<4; j++) AudioStream.pop();
-			//AudioStream.pop();
-		}
+		resampler->inp_count = 38182;
+		resampler->out_count = 1024;
+		resampler->inp_data = AudioStreamBuffer;
+		resampler->out_data = tempstream;
+		AudioLock.lock();
+		resampler->process();
+		AudioLock.unlock();
+		AudioStreamIndex = 0;
 	}
 }
 
@@ -298,6 +298,7 @@ void IO::HandleInput()
 					t(XBOX360_BACK, 2)
 					t(XBOX360_START, 3)
 				#undef t
+				case XBOX360_Y: ShouldSaveGame = true; break;
 			}
 		}
 		else if (event.type == SDL_JOYHATMOTION)
@@ -345,27 +346,58 @@ void IO::HandleInput()
 				t(SDLK_LEFT, 6)
 				t(SDLK_RIGHT, 7)
 			#undef t
+			case SDLK_s: ShouldSaveGame = true; break;
 		}
 }
 
 void IO::ReadAudioMix( void *unused, uint8 *stream, int32 len )
 {
 	ReadInProgress = true;
-	//const uint8** t = const_cast<const uint8 **>(reinterpret_cast<uint8 **>(&AudioStreamBuffer));
-	//swr_convert(resampler, &stream, 8192, t, 8192);
-	//audio_resample(resampler, tempstream, AudioStreamBuffer, 8192);
-	/*resampler->inp_count = 16384;
-	resampler->out_count = 4096;
-	resampler->inp_data = AudioStreamBuffer;
-	resampler->out_data = tempstream;
-	resampler->process();*/
+	AudioLock.lock();
 	for (int i=0; i<len; i++) {
-		//uint8 temp = 0;
-		//for (int j=0; j<4; j++) temp += AudioStreamBuffer[4*i+j];
-		//stream[i] = static_cast<uint8>(tempstream[i]);
-		stream[i] = AudioStreamBuffer[i];
+		short temp = static_cast<short>(tempstream[i/2]);
+		stream[i++] = uint8(temp & 0xFF);
+		stream[i] = uint8(temp / 256);
 	}
+	AudioLock.unlock();
 	ReadInProgress = false;
+}
+
+void IO::WriteWAV( const char *outfile )
+{
+	struct WavHeader
+	{
+		// RIFF Chunk
+		char			ChunkID[4];
+		unsigned long	ChunkSize;
+		char			Format[4];
+
+		// Format Chunk
+		char			FormatChunkID[4];
+		unsigned long	FormatChunkSize;
+		unsigned short	AudioFormat;
+		unsigned short	NumChannels;
+		unsigned long	SampleRate;
+		unsigned long	ByteRate;
+		unsigned short	BlockAlign;
+		unsigned short	BitsPerSample;
+
+		// Data Chunk
+		char			DataChunkID[4];
+		unsigned long	DataChunkSize;
+	};
+
+	if (AudioDump)
+	{
+		unsigned DataSize = static_cast<unsigned>(AudioSamples.size()) * 1024 * 2;
+		unsigned FileSize = 36 + DataSize;
+		WavHeader temp = { {'R','I','F','F'}, FileSize, {'W','A','V','E'}, {'f','m','t',' '}, 16, 1, 1, 48000, 96000, 2, 16, {'d','a','t','a'}, DataSize};
+
+		std::ofstream stream(outfile, std::ios::binary);
+		stream.write((char *)&temp, sizeof(WavHeader));
+		for (short * sample : AudioSamples) stream.write((char *)sample, 1024*sizeof(short));
+		stream.close();
+	}
 }
 
 void NonMemberReadAudioMix( void *io, uint8 *stream, int32 len )

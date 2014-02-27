@@ -7,6 +7,8 @@
 #include <sstream>
 #include <map>
 #include <queue>
+#include <mutex>
+#include <vector>
 
 class IO
 {
@@ -20,9 +22,11 @@ class IO
 	SDL_AudioSpec *desired, *obtained;
 	std::queue<uint8> AudioStream;
 	Resampler* resampler;
+	std::mutex AudioLock;
 	bool quit;
 	bool ScanlineFlushed;
 	bool FrameDump;
+	bool AudioDump;
 	bool NTSCMode;
 	int32 VerticalScale;
 	int32 HorizontalScale;
@@ -34,12 +38,16 @@ class IO
 	bool bXBOX360Controller;
 	bool AudioRunning;
 	bool ReadInProgress;
-	uint8 AudioStreamBuffer[2048];
-	uint8 tempstream[4096];
+	float AudioStreamBuffer[38182];
+	float tempstream[1024];
+	std::vector<short *> AudioSamples;
 	float GammaFix(float f);
 	uint32 Clamp(float i);
 
 public:
+
+	bool ShouldSaveGame;
+
 	IO();
 	bool Init(int32 width = 256, int32 height = 240);
 	void FlushScanline(uint32 y);
@@ -53,9 +61,11 @@ public:
 	void SetFPS( float v );
 	void StartClock();
 	void WaitForClock();
-	void WriteAudioStream(uint8 in);
+	void WriteAudioStream(float in);
 	void ReadAudioMix(void *unused, uint8 *stream, int32 len);
 	void HandleInput();
+	void SetAudioDump( bool dump );
+	void WriteWAV( const char *outfile );
 };
 
 void NonMemberReadAudioMix( void *io, uint8 *stream, int32 len );

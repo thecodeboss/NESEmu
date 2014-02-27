@@ -361,3 +361,27 @@ void NESGame::MMC3VROM( uint8 Value, uint8* Registers )
 	SetVROM(0x400, base ^ 0x1800, Registers[4]);
 	SetVROM(0x400, base ^ 0x1C00, Registers[5]);
 }
+
+void NESGame::SetName( char* name )
+{
+	Name = name;
+}
+
+void NESGame::Save()
+{
+	ofstream OutputFile(Name + ".sav", ios::binary);
+	OutputFile.unsetf(ios_base::skipws);
+	for (int32 i=0; i<0x2000; i++) OutputFile << WRAM[i];
+	OutputFile.close();
+}
+
+void NESGame::FindAndLoadSave()
+{
+	ifstream SaveFile(Name + ".sav", ios::binary);
+	if (SaveFile.good())
+	{
+		SaveFile.unsetf(ios_base::skipws);
+		for (int32 i=0; i<0x2000; i++) SaveFile >> WRAM[i];
+		std::cout << "Loaded saved file from " << Name << ".sav." << std::endl;
+	}
+}

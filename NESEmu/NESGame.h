@@ -3,6 +3,7 @@
 
 #include "Global.h"
 #include <vector>
+#include <string>
 class CPU;
 
 class NESGame
@@ -24,6 +25,7 @@ public:
 	uint8 Mirroring;
 	uint8 MirrorHard;
 	uint8 MMC3Cmd;
+	std::string Name;
 	NESGame();
 	void SetMapperNum(uint8 in);
 	void SetROMSize( uint8 numROM16 );
@@ -44,6 +46,9 @@ public:
 	void SetMirrorType( uint8 t );
 	void MMC3ROM( uint8 Value, uint8* Registers );
 	void MMC3VROM( uint8 Value, uint8* Registers );
+	void SetName( char* name );
+	void Save();
+	void FindAndLoadSave();
 };
 
 #endif // NESGame_h__

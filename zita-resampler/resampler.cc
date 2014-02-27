@@ -91,7 +91,7 @@ int Resampler::setup (unsigned int fs_inp,
         g = gcd (fs_out, fs_inp);
         n = fs_out / g;
 	s = fs_inp / g;
-        if ((16 * r >= 1) && (n <= 1000))
+        if ((64 * r >= 1) && (n <= 1000))
 	{
 	    h = hlen;
 	    k = 250;
