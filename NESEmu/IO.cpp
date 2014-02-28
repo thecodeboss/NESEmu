@@ -1,5 +1,6 @@
 #include "IO.h"
 #include "Palette.h"
+#include <windows.h> // I hate to include this, but I want access to CreateDirectory()
 using namespace std;
 
 IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), AudioDump(false), NTSCMode(false), StartTime(0), joystick(NULL), bXBOX360Controller(false), AudioRunning(false), ReadInProgress(false), ShouldSaveGame(false)
@@ -11,6 +12,24 @@ IO::IO() : PreviousPixel(~0u), FrameCount(0), FrameDump(false), AudioDump(false)
 	JoystickPosition[0] = 0;
 	JoystickPosition[1] = 0;
 	for (int32 i=0; i<38182; i++) AudioStreamBuffer[i] = 0;
+}
+
+IO::~IO()
+{
+	// There doesn't seem to be
+	SDL_Delay(100); // Sleep 1/10 second
+
+	// Before deleting IO, ensure the audio thread finishes what it's
+	// doing or it'll be eating bad memory.
+	SDL_CloseAudio();
+
+	delete desired;
+	delete obtained;
+
+	// Also SDL leaks if we don't manually 'quit'
+	SDL_Quit();
+
+	delete resampler;
 }
 
 bool IO::Init(int32 hScale, int32 vScale)
@@ -91,7 +110,7 @@ void IO::FlushScanline( uint32 y )
 		if (FrameDump)
 		{
 			std::stringstream s;
-			s << "..\\frames\\frame";
+			s << "frames\\frame";
 			if (FrameCount < 10) s << "0000";
 			else if (FrameCount < 100) s << "000";
 			else if (FrameCount < 1000) s << "00";
@@ -194,7 +213,16 @@ bool IO::Poll()
 
 void IO::SetFrameDump( bool set )
 {
-	FrameDump = true;
+	if (CreateDirectory(L"frames", NULL) ||
+		ERROR_ALREADY_EXISTS == GetLastError())
+	{
+		FrameDump = true;
+		cout << "Framedump successfully started." << endl;
+	}
+	else
+	{
+		cout << "Framedump failed to start: directory creation failed." << endl;
+	}
 }
 
 void IO::SetAudioDump( bool dump )

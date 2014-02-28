@@ -49,6 +49,7 @@ public:
 	bool ShouldSaveGame;
 
 	IO();
+	virtual ~IO();
 	bool Init(int32 width = 256, int32 height = 240);
 	void FlushScanline(uint32 y);
 	void SetPixel(uint32 x, uint32 y, uint32 pixel, int32 offset = 0);

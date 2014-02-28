@@ -215,14 +215,14 @@ void NESGame::Dump()
 	}
 	std::cout << std::endl;
 	std::cout << "ROM:" << std::endl;
-	for (int i=0; i<ROM.size(); i++)
+	for (size_t i=0; i<ROM.size(); i++)
 	{
 		PrintHex(ROM[i]);
 		if (i%40 == 0 && i>0) std::cout << std::endl;
 	}
 	std::cout << std::endl;
 	std::cout << "VRAM:" << std::endl;
-	for (int i=0; i<VRAM.size(); i++)
+	for (size_t i=0; i<VRAM.size(); i++)
 	{
 		PrintHex(VRAM[i]);
 		if (i%40 == 0 && i>0) std::cout << std::endl;
@@ -378,10 +378,11 @@ void NESGame::Save()
 void NESGame::FindAndLoadSave()
 {
 	ifstream SaveFile(Name + ".sav", ios::binary);
-	if (SaveFile.good())
+	if (SaveFile.is_open())
 	{
 		SaveFile.unsetf(ios_base::skipws);
 		for (int32 i=0; i<0x2000; i++) SaveFile >> WRAM[i];
 		std::cout << "Loaded saved file from " << Name << ".sav." << std::endl;
+		SaveFile.close();
 	}
 }

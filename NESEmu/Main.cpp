@@ -24,6 +24,21 @@ void ReadHex(ifstream& input, uint8& output)
 
 int main(int argc, char** argv)
 {
+	if (argc < 2)
+	{
+		cout << "You need to run this application with an input NES game." << endl;
+		cout << "Format is:" << endl;
+		cout << "NESEmu path/to/game.nes" << endl;
+		return 0;
+	}
+
+	ifstream InputGame(argv[1], ios::binary);
+	if (!InputGame.is_open())
+	{
+		cout << "Failed to open input file; check your path." << endl;
+		return 0;
+	}
+
 	IO* io = new IO();
 	APU* apu = new APU();
 	PPU* ppu = new PPU();
@@ -35,7 +50,7 @@ int main(int argc, char** argv)
 	io->SetFPS(60.0f);
 
 	if (argc > 2 && !strcmp(argv[2],"framedump")) io->SetFrameDump(true);
-	if (argc > 2 && !strcmp(argv[3],"audiodump")) io->SetAudioDump(true);
+	if (argc > 3 && !strcmp(argv[3],"audiodump")) io->SetAudioDump(true);
 
 	cpu->SetIO(io);
 	cpu->SetAPU(apu);
@@ -50,13 +65,11 @@ int main(int argc, char** argv)
 	apu->SetIO(io);
 	apu->SetCPU(cpu);
 
-	ifstream InputGame(argv[1], ios::binary);
 	InputGame.unsetf(ios_base::skipws);
 
 	uint8 temp, numROM16, numVROM8, ctrlByte1, ctrlByte2;
 	for(int i=0;i<4;i++) ReadHex(InputGame, temp); // Read 'NES^Z' from header
 
-	//InputGame >> numROM16 >> numVROM8 >> ctrlByte1 >> ctrlByte2;
 	ReadHex(InputGame, numROM16);
 	ReadHex(InputGame, numVROM8);
 	ReadHex(InputGame, ctrlByte1);
@@ -73,14 +86,20 @@ int main(int argc, char** argv)
 	game->LoadVRAM(InputGame);
 	game->Init();
 	game->FindAndLoadSave();
-
+	InputGame.close();
 
 	cpu->Run();
 
-	/*cpu->Dump();
-	ppu->Dump();
-	apu->Dump();
-	game->Dump();*/
+	// If audiodump is set, write out a wav file
+	// Hardcoded since rarely used, and don't feel like dealing with
+	// missing/incorrect directories.
+	io->WriteWAV("output.wav");
+
+	delete cpu;
+	delete game;
+	delete ppu;
+	delete apu;
+	delete io;
 
 	return 0;
 }
