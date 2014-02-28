@@ -22,9 +22,6 @@
     <ProjectGuid>{6E1F9DD9-F5FF-4BDC-BC10-79B3D4EA330D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>NESEmu</RootNamespace>
-    <LocalDebuggerCommandArguments>..\..\..\ROMs\SuperMario.nes</LocalDebuggerCommandArguments>
-    <LocalDebuggerWorkingDirectory>..\bin\$(Platform)\$(Configuration)\</LocalDebuggerWorkingDirectory>
-    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -177,7 +174,6 @@
     <ClInclude Include="APU.h" />
     <ClInclude Include="CPU.h" />
     <ClInclude Include="IO.h" />
-    <ClInclude Include="libavcodec\audioconvert.h" />
     <ClInclude Include="NESGame.h" />
     <ClInclude Include="Global.h" />
     <ClInclude Include="Palette.h" />
