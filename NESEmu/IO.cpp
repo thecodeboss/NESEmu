@@ -74,7 +74,9 @@ bool IO::Init(int32 hScale, int32 vScale)
 		for(int32 i=0; i < SDL_NumJoysticks(); i++ )
 		{
 			cout << SDL_JoystickName(i) << endl;
-			if (strcmp(SDL_JoystickName(i), "Controller (XBOX 360 For Windows)") == 0 && !bXBOX360Controller)
+			// @TODO: Should definitely make this a better string search, but I'm lazy for now.
+			if ((strcmp(SDL_JoystickName(i), "Controller (XBOX 360 For Windows)") == 0
+				|| strcmp(SDL_JoystickName(i), "Controller (Xbox 360 Wireless Receiver for Windows)") == 0) && !bXBOX360Controller)
 			{
 				SDL_JoystickEventState(SDL_ENABLE);
 				joystick = SDL_JoystickOpen(0);
