@@ -13,10 +13,10 @@ Emulating
 
 To run the emulator, you need to have compiled it, and you can then run it in Visual Studio, or standalone from the command line.  When running it, the command line should be as follows:
 
-  NESEmu path/to/game.nes [framedump [audiodump]]
+    NESEmu path/to/game.nes [framedump [audiodump]]
 
 framedump: Will create a 'frames' directory in your working directory to dump every frame while you are playing (in BMP format)
-audiodump: Will output an 'output.wav' file in your w.orking directory upon exiting the application, with the entire audio contents of your playthrough.
+audiodump: Will output an 'output.wav' file in your working directory upon exiting the application, with the entire audio contents of your playthrough.
 
 Frame/audio dumps must be manually concatenated using software such as FFMPEG.  Be aware you may need to figure out any sync issues yourself.
 
@@ -30,4 +30,4 @@ Disclaimers
 
 This application is designed purely for educational purposes, and I am not attempting to infringe on any copyright materials.  Any and all data from Nintendo game cartridges used with the application will NOT be distributed by me, but rather you must own the game cartridge and not distribute it for any reason.
 
-This code is yours, free to use, assuming you are not using it commercially without written permission.
+This code is yours, free to use and modify, assuming you do not use it for any form of profit without my written permission.
